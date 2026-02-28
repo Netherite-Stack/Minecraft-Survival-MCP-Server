@@ -1,30 +1,19 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import mineflayer from "mineflayer";
 import { pathfinder, Movements, goals } from "mineflayer-pathfinder";
 import { randomUUID } from "node:crypto";
 
 /**
- * Define your MCP server.
+ * Define your MCP server using the modern McpServer class.
  */
-const server = new Server(
-  {
-    name: "mc-mcp-mineflayer",
-    version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
-);
+const server = new McpServer({
+  name: "mc-mcp-mineflayer",
+  version: "1.0.0",
+});
 
 let bot: mineflayer.Bot | null = null;
 
@@ -56,56 +45,16 @@ async function connectBot(host: string, port: number, username: string): Promise
 }
 
 /**
- * List available tools.
+ * Register the connect_bot tool.
  */
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "connect_bot",
-        description: "Connect the Mineflayer bot to a server",
-        inputSchema: {
-          type: "object",
-          properties: {
-            host: { type: "string", description: "Minecraft server host" },
-            port: { type: "number", description: "Minecraft server port", default: 25565 },
-            username: { type: "string", description: "Bot username", default: "MCP-Bot" },
-          },
-          required: ["host"],
-        },
-      },
-      {
-        name: "goto_coordinates",
-        description: "Move the bot to specific coordinates using pathfinding",
-        inputSchema: {
-          type: "object",
-          properties: {
-            x: { type: "number" },
-            y: { type: "number" },
-            z: { type: "number" },
-          },
-          required: ["x", "y", "z"],
-        },
-      },
-    ],
-  };
-});
-
-/**
- * Handle tool calls.
- */
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  if (name === "connect_bot") {
-    const { host, port, username } = z
-      .object({
-        host: z.string(),
-        port: z.number().default(25565),
-        username: z.string().default("MCP-Bot"),
-      })
-      .parse(args);
-
+server.tool(
+  "connect_bot",
+  {
+    host: z.string().describe("Minecraft server host"),
+    port: z.number().default(25565).describe("Minecraft server port"),
+    username: z.string().default("MCP-Bot").describe("Bot username"),
+  },
+  async ({ host, port, username }) => {
     try {
       const message = await connectBot(host, port, username);
       return { content: [{ type: "text", text: message }] };
@@ -113,22 +62,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: "text", text: err.message }], isError: true };
     }
   }
+);
 
-  if (name === "goto_coordinates") {
+/**
+ * Register the goto_coordinates tool.
+ */
+server.tool(
+  "goto_coordinates",
+  {
+    x: z.number(),
+    y: z.number(),
+    z: z.number(),
+  },
+  async ({ x, y, z: coordZ }) => {
     if (!bot) {
       return {
         content: [{ type: "text", text: "Bot is not connected. Use connect_bot first." }],
         isError: true,
       };
     }
-
-    const { x, y, z: coordZ } = z
-      .object({
-        x: z.number(),
-        y: z.number(),
-        z: z.number(),
-      })
-      .parse(args);
 
     const defaultMove = new Movements(bot);
     bot.pathfinder.setMovements(defaultMove);
@@ -138,9 +90,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [{ type: "text", text: `Pathfinding to ${x}, ${y}, ${coordZ}...` }],
     };
   }
-
-  throw new Error(`Tool not found: ${name}`);
-});
+);
 
 /**
  * Start the server.
