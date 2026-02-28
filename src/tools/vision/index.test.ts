@@ -33,6 +33,19 @@ function createHarness(initialBot: any = null) {
 }
 
 describe("vision tools", () => {
+  it("returns an error for screenshot capture when bot is not connected", async () => {
+    const harness = createHarness(null);
+    const result = await harness.call("capture_bot_view", {
+      width: 800,
+      height: 400,
+      view_distance: 6,
+      quality: 0.9,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not connected");
+  });
+
   it("locates dropped items sorted by distance and supports max_results", async () => {
     const bot = {
       entity: { position: { x: 0, y: 64, z: 0 } },

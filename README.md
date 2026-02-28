@@ -20,6 +20,18 @@ npm install
 npm run build
 ```
 
+### Screenshot Dependency (Optional)
+
+The `capture_bot_view` tool needs `node-canvas-webgl`.
+
+Use Node 24 LTS (or 22 LTS) before installing:
+
+```bash
+nvm install 24
+nvm use 24
+npm install github:PrismarineJS/node-canvas-webgl
+```
+
 ## The Helix Approach & Key Improvements
 
 Traditional Minecraft MCP implementations often treat the LLM as a "low-level controller." This results in high latency, token waste, and frequent failures due to the LLM struggling with 3D coordinate math or step-by-step block placement.
@@ -31,7 +43,7 @@ Instead of asking the LLM to "Move forward, then turn left, then jump," the LLM 
 
 ### 2. Transactional Operations
 Complex tasks are exposed as single high-level transactions.
-*   **Current:** `get_own_position`, `move_to_coordinates`, `move_to_player`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `locate_blocks_in_area`, `locate_dropped_items`, `search_blocks_wiki`, `search_items_wiki`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
+*   **Current:** `get_own_position`, `move_to_coordinates`, `move_to_player`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `capture_bot_view`, `locate_blocks_in_area`, `locate_dropped_items`, `search_blocks_wiki`, `search_items_wiki`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
 *   **Planned:** `build_structure` (Geometric templates handled by the server), `harvest_area` (Area scanning and path optimization).
 
 ### 3. Reduced Cognitive Load
@@ -73,6 +85,7 @@ npm run dev
 
 ### Vision Module
 
+- `capture_bot_view`: Capture a first-person screenshot from the bot. Inputs: `width` (default `800`), `height` (default `400`), `view_distance` in blocks (default `96`), `quality`, `look_at_x`, `look_at_y`, `look_at_z`.
 - `locate_blocks_in_area`: Locate blocks by name/id/wildcard, sorted by nearest. Inputs: `query`, `radius`, `max_results`, optional `center_x`, `center_y`, `center_z`.
 - `locate_dropped_items`: Locate dropped item entities, sorted by nearest. Inputs: `radius`, `max_results`, optional `query`.
 

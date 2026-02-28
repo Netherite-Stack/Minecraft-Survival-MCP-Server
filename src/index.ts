@@ -14,14 +14,6 @@ import { registerWikiTools } from "./tools/wiki/index.js";
 
 const { pathfinder } = pathfinderPkg;
 
-/**
- * Define your MCP server using the modern McpServer class.
- */
-const server = new McpServer({
-  name: pkg.name,
-  version: pkg.version,
-});
-
 let bot: mineflayer.Bot | null = null;
 let isConnecting = false;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -78,11 +70,28 @@ function connectBot() {
   });
 }
 
-registerMultiplayerTools(server, () => bot);
-registerMovementTools(server, () => bot);
-registerMiningTools(server, () => bot);
-registerVisionTools(server, () => bot);
-registerWikiTools(server, () => bot);
+function createServer() {
+  const server = new McpServer({
+    name: pkg.name,
+    version: pkg.version,
+  });
+
+  registerMultiplayerTools(server, () => bot);
+  registerMovementTools(server, () => bot);
+  registerMiningTools(server, () => bot);
+  registerVisionTools(server, () => bot);
+  registerWikiTools(server, () => bot);
+
+  return server;
+}
+
+function getSessionId(headerValue: string | string[] | undefined) {
+  if (Array.isArray(headerValue)) {
+    return headerValue[0];
+  }
+
+  return headerValue;
+}
 
 /**
  * Start the server.
@@ -96,23 +105,90 @@ async function main() {
   if (transportMode === "remote") {
     const port = parseInt(process.env.PORT || "3000");
     const host = process.env.HOST || "0.0.0.0";
-    
+    const sessions = new Map<string, StreamableHTTPServerTransport>();
+
     const app = createMcpExpressApp({ host });
-    
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID()
+
+    app.post("/mcp", async (req, res) => {
+      const sessionId = getSessionId(req.headers["mcp-session-id"]);
+
+      if (sessionId && sessions.has(sessionId)) {
+        const existingTransport = sessions.get(sessionId);
+        await existingTransport?.handleRequest(req, res, req.body);
+        return;
+      }
+
+      if (!sessionId && req.body?.method === "initialize") {
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (id) => {
+            sessions.set(id, transport);
+          },
+        });
+
+        transport.onclose = () => {
+          if (transport.sessionId) {
+            sessions.delete(transport.sessionId);
+          }
+        };
+
+        const server = createServer();
+        await server.connect(transport);
+        await transport.handleRequest(req, res, req.body);
+        return;
+      }
+
+      res.status(400).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Bad Request: Missing session or initialize request",
+        },
+        id: null,
+      });
     });
 
-    await server.connect(transport);
+    app.get("/mcp", async (req, res) => {
+      const sessionId = getSessionId(req.headers["mcp-session-id"]);
+      if (!sessionId || !sessions.has(sessionId)) {
+        res.status(400).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32000,
+            message: "Bad Request: Server not initialized",
+          },
+          id: null,
+        });
+        return;
+      }
 
-    app.all("/mcp", async (req, res) => {
-      await transport.handleRequest(req, res);
+      const existingTransport = sessions.get(sessionId);
+      await existingTransport?.handleRequest(req, res);
+    });
+
+    app.delete("/mcp", async (req, res) => {
+      const sessionId = getSessionId(req.headers["mcp-session-id"]);
+      if (!sessionId || !sessions.has(sessionId)) {
+        res.status(400).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32000,
+            message: "Bad Request: Invalid session",
+          },
+          id: null,
+        });
+        return;
+      }
+
+      const existingTransport = sessions.get(sessionId);
+      await existingTransport?.handleRequest(req, res);
     });
 
     app.listen(port, host, () => {
       console.error(`MCP Remote server listening on http://${host}:${port}/mcp`);
     });
   } else {
+    const server = createServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
     console.error("MCP server running on stdio");
