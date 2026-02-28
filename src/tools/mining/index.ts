@@ -21,6 +21,14 @@ function floorPos(x: number, y: number, z: number) {
   };
 }
 
+function isTreeLogLike(name: string) {
+  return (
+    name.includes("log") ||
+    name.includes("stem") ||
+    name.includes("hyphae")
+  );
+}
+
 function resolveBlockAt(bot: mineflayer.Bot, x: number, y: number, z: number): BotBlock | null {
   const p = floorPos(x, y, z);
   const block = bot.blockAt(new Vec3(p.x, p.y, p.z)) as BotBlock | null;
@@ -115,11 +123,25 @@ async function runWithTimeout<T>(operation: Promise<T>, timeoutMs: number, timeo
 
 async function moveNearBlock(bot: mineflayer.Bot, block: BotBlock, timeoutMs: number) {
   const movement = new Movements(bot);
+  movement.allowParkour = false;
   bot.pathfinder.setMovements(movement);
 
   const p = floorPos(block.position.x, block.position.y, block.position.z);
   const goal = new goals.GoalNear(p.x, p.y, p.z, 1);
   await runWithTimeout(bot.pathfinder.goto(goal), timeoutMs, "Move to block");
+}
+
+async function moveNearBlockNoBuild(bot: mineflayer.Bot, block: BotBlock, timeoutMs: number) {
+  const movement = new Movements(bot);
+  movement.allow1by1towers = false;
+  movement.allowParkour = false;
+  movement.allowSprinting = false;
+  movement.scafoldingBlocks = [];
+  bot.pathfinder.setMovements(movement);
+
+  const p = floorPos(block.position.x, block.position.y, block.position.z);
+  const goal = new goals.GoalNear(p.x, p.y, p.z, 1);
+  await runWithTimeout(bot.pathfinder.goto(goal), timeoutMs, "Move to block (no-build)");
 }
 
 async function moveToBlockPosition(
@@ -155,14 +177,13 @@ async function mineTargetBlock(
     timeoutMs: number;
   }
 ) {
-  await equipBestTool(bot, block);
-
   const status = isMineableByCurrentInventory(bot, block);
   if (!status.ok) {
     throw new Error(status.reason);
   }
 
   await moveNearBlock(bot, block, options.timeoutMs);
+  await equipBestTool(bot, block);
   await digBlock(bot, block, options.timeoutMs);
 }
 
@@ -180,6 +201,35 @@ async function mineBlockWithoutReposition(
     throw new Error(status.reason);
   }
 
+  await digBlock(bot, block, options.timeoutMs);
+}
+
+async function mineTreeTargetBlock(
+  bot: mineflayer.Bot,
+  block: BotBlock,
+  options: {
+    timeoutMs: number;
+    allowBuildUpIfNeeded: boolean;
+  }
+) {
+  const status = isMineableByCurrentInventory(bot, block);
+  if (!status.ok) {
+    throw new Error(status.reason);
+  }
+
+  try {
+    await moveNearBlockNoBuild(bot, block, options.timeoutMs);
+    await equipBestTool(bot, block);
+    await digBlock(bot, block, options.timeoutMs);
+    return;
+  } catch (error) {
+    if (!options.allowBuildUpIfNeeded) {
+      throw error;
+    }
+  }
+
+  await moveNearBlock(bot, block, options.timeoutMs);
+  await equipBestTool(bot, block);
   await digBlock(bot, block, options.timeoutMs);
 }
 
@@ -362,9 +412,10 @@ export function registerMiningTools(
         y: z.number(),
         z: z.number(),
         timeout_ms: z.number().int().min(1000).max(600000).default(90000),
+        allow_build_up_if_needed: z.boolean().default(true),
       },
     },
-    async ({ x, y, z: targetZ, timeout_ms }) => {
+    async ({ x, y, z: targetZ, timeout_ms, allow_build_up_if_needed }) => {
       const bot = getBot();
 
       if (!bot) {
@@ -382,9 +433,9 @@ export function registerMiningTools(
         };
       }
 
-      if (!root.name.includes("log")) {
+      if (!isTreeLogLike(root.name)) {
         return {
-          content: [{ type: "text", text: `Selected block is not a log: ${root.name}` }],
+          content: [{ type: "text", text: `Selected block is not a log-like block: ${root.name}` }],
           isError: true,
         };
       }
@@ -405,7 +456,7 @@ export function registerMiningTools(
         visited.add(key);
 
         const block = resolveBlockAt(bot, node.x, node.y, node.z);
-        if (!block || !block.name.includes("log")) {
+        if (!block || !isTreeLogLike(block.name)) {
           continue;
         }
 
@@ -428,32 +479,68 @@ export function registerMiningTools(
         }
       }
 
-      connected.sort((a, b) => b.y - a.y);
+      const remaining = new Map<string, { x: number; y: number; z: number }>();
+      for (const node of connected) {
+        remaining.set(`${node.x},${node.y},${node.z}`, node);
+      }
 
       let mined = 0;
       let failed = 0;
 
       try {
-        for (const node of connected) {
+        while (remaining.size > 0) {
           ensureProgress(timeout_ms, lastProgressAt);
 
-          const block = resolveBlockAt(bot, node.x, node.y, node.z);
+          let passProgress = false;
+          const candidates = Array.from(remaining.values()).sort((a, b) => {
+            const da = Math.sqrt(
+              (a.x - bot.entity.position.x) ** 2 +
+                (a.y - bot.entity.position.y) ** 2 +
+                (a.z - bot.entity.position.z) ** 2
+            );
+            const db = Math.sqrt(
+              (b.x - bot.entity.position.x) ** 2 +
+                (b.y - bot.entity.position.y) ** 2 +
+                (b.z - bot.entity.position.z) ** 2
+            );
+            return da - db;
+          });
 
-          if (!block || !block.name.includes("log")) {
-            continue;
+          for (const node of candidates) {
+            const key = `${node.x},${node.y},${node.z}`;
+            const block = resolveBlockAt(bot, node.x, node.y, node.z);
+
+            if (!block || !isTreeLogLike(block.name)) {
+              remaining.delete(key);
+              continue;
+            }
+
+            try {
+              await mineTreeTargetBlock(bot, block, {
+                timeoutMs: Math.min(15000, timeout_ms),
+                allowBuildUpIfNeeded: allow_build_up_if_needed,
+              });
+              mined += 1;
+              lastProgressAt = Date.now();
+              passProgress = true;
+              remaining.delete(key);
+            } catch {
+              failed += 1;
+            }
           }
 
-          try {
-            await mineTargetBlock(bot, block, { timeoutMs: Math.min(15000, timeout_ms) });
-            mined += 1;
-            lastProgressAt = Date.now();
-          } catch {
-            failed += 1;
+          if (!passProgress) {
+            break;
           }
         }
 
         return {
-          content: [{ type: "text", text: `Tree break finished. logs_mined=${mined}, failed=${failed}` }],
+          content: [
+            {
+              type: "text",
+              text: `Tree break finished. logs_mined=${mined}, failed=${failed}, remaining=${remaining.size}`,
+            },
+          ],
         };
       } catch (error: unknown) {
         bot.pathfinder.setGoal(null);

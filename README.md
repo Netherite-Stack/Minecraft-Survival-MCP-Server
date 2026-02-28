@@ -31,7 +31,7 @@ Instead of asking the LLM to "Move forward, then turn left, then jump," the LLM 
 
 ### 2. Transactional Operations
 Complex tasks are exposed as single high-level transactions.
-*   **Current:** `move_to_coordinates`, `move_to_player`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
+*   **Current:** `get_own_position`, `move_to_coordinates`, `move_to_player`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `locate_blocks_in_area`, `locate_dropped_items`, `search_blocks_wiki`, `search_items_wiki`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
 *   **Planned:** `build_structure` (Geometric templates handled by the server), `harvest_area` (Area scanning and path optimization).
 
 ### 3. Reduced Cognitive Load
@@ -61,23 +61,33 @@ npm run dev
 ### Movement Module
 
 - `get_own_position`: Get the bot's current coordinates.
-- `move_to_coordinates`: Move to target coordinates with configurable `allow_block_breaking`, `allow_block_placement`, and `timeout_ms`.
-- `move_to_player`: Move near a player with configurable `range`, `allow_block_breaking`, `allow_block_placement`, and `timeout_ms`.
+- `move_to_coordinates`: Move to target coordinates. Inputs: `x`, `y`, `z`, `allow_block_breaking`, `allow_block_placement`, `timeout_ms`.
+- `move_to_player`: Move near a player. Inputs: `username`, `range`, `allow_block_breaking`, `allow_block_placement`, `timeout_ms`.
 
 ### Mining Module
 
-- `mine_block_by_coords`: Mine one block with mineability/tool checks and `timeout_ms`.
-- `mine_room`: Mine all blocks in a rectangular area (`start`, `length`, `width`, `depth`) with `timeout_ms`.
-- `break_tree`: Break all connected logs from a selected log block with `timeout_ms`.
-- `mine_stairs`: Create a descending stair tunnel to a target depth with `timeout_ms`.
+- `mine_block_by_coords`: Mine one block with mineability/tool checks. Inputs: `x`, `y`, `z`, `timeout_ms`.
+- `mine_room`: Mine a cuboid area layer-by-layer. Inputs: `start_x`, `start_y`, `start_z`, `length`, `width`, `depth`, `timeout_ms`.
+- `break_tree`: Break all connected log-like blocks (`log`, `stem`, `hyphae`). Inputs: `x`, `y`, `z`, `timeout_ms`, `allow_build_up_if_needed`.
+- `mine_stairs`: Create a descending stair tunnel to a target depth. Inputs: `depth`, `timeout_ms`.
+
+### Vision Module
+
+- `locate_blocks_in_area`: Locate blocks by name/id/wildcard, sorted by nearest. Inputs: `query`, `radius`, `max_results`, optional `center_x`, `center_y`, `center_z`.
+- `locate_dropped_items`: Locate dropped item entities, sorted by nearest. Inputs: `radius`, `max_results`, optional `query`.
+
+### Wiki Module
+
+- `search_blocks_wiki`: Search block names and ids from Mineflayer's built-in registry. Inputs: `query`, `max_results`.
+- `search_items_wiki`: Search item names and ids from Mineflayer's built-in registry. Inputs: `query`, `max_results`.
 
 ### Multiplayer Module
 
 - `list_players`: Get all currently known players on the server.
-- `find_player`: Search players by partial username (case-insensitive).
-- `get_player_coordinates`: Get coordinates of a visible player.
-- `distance_to_player`: Calculate 3D distance from the bot to a player in blocks.
-- `find_nearest_players`: Find the nearest `x_parameter` visible players.
+- `find_player`: Search players by partial username (case-insensitive). Inputs: `query`.
+- `get_player_coordinates`: Get coordinates of a visible player. Inputs: `username`.
+- `distance_to_player`: Calculate 3D distance from the bot to a player in blocks. Inputs: `username`.
+- `find_nearest_players`: Find nearest visible players. Inputs: `x_parameter`.
 
 The server manages exactly one bot process and attempts connection automatically on startup.
 

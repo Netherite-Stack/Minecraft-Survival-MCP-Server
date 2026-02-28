@@ -9,6 +9,8 @@ import pkg from "../package.json" with { type: "json" };
 import { registerMovementTools } from "./tools/movement/index.js";
 import { registerMiningTools } from "./tools/mining/index.js";
 import { registerMultiplayerTools } from "./tools/multiplayer/index.js";
+import { registerVisionTools } from "./tools/vision/index.js";
+import { registerWikiTools } from "./tools/wiki/index.js";
 
 const { pathfinder } = pathfinderPkg;
 
@@ -79,6 +81,8 @@ function connectBot() {
 registerMultiplayerTools(server, () => bot);
 registerMovementTools(server, () => bot);
 registerMiningTools(server, () => bot);
+registerVisionTools(server, () => bot);
+registerWikiTools(server, () => bot);
 
 /**
  * Start the server.
