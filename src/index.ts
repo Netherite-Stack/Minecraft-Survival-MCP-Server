@@ -6,13 +6,14 @@ import { z } from "zod";
 import mineflayer from "mineflayer";
 import { pathfinder, Movements, goals } from "mineflayer-pathfinder";
 import { randomUUID } from "node:crypto";
+import pkg from "../package.json" with { type: "json" };
 
 /**
  * Define your MCP server using the modern McpServer class.
  */
 const server = new McpServer({
-  name: "mc-mcp-mineflayer",
-  version: "1.0.0",
+  name: pkg.name,
+  version: pkg.version,
 });
 
 let bot: mineflayer.Bot | null = null;
