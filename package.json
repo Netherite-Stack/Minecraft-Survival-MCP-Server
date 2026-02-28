@@ -8,7 +8,7 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "test": "jest"
+    "test": "vitest run"
   },
   "author": "Leon Gauweiler",
   "license": "MIT",
@@ -21,11 +21,9 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
-    "@types/jest": "^30.0.0",
     "@types/node": "^25.3.2",
-    "jest": "^30.2.0",
-    "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }
