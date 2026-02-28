@@ -17,53 +17,60 @@ const server = new McpServer({
 });
 
 let bot: mineflayer.Bot | null = null;
+let isConnecting = false;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+const botConfig = {
+  host: process.env.MC_HOST || "localhost",
+  port: parseInt(process.env.MC_PORT || "25565", 10),
+  username: process.env.MC_USERNAME || "MCP-Bot",
+};
+
+function scheduleReconnect(reason: string) {
+  if (reconnectTimer) {
+    return;
+  }
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    console.error(`Reconnecting bot after ${reason}...`);
+    connectBot();
+  }, 5000);
+}
 
 /**
  * Helper to connect the bot.
  */
-async function connectBot(host: string, port: number, username: string): Promise<string> {
-  if (bot) {
-    bot.quit();
+function connectBot() {
+  if (isConnecting || bot) {
+    return;
   }
 
-  return new Promise((resolve, reject) => {
-    bot = mineflayer.createBot({
-      host,
-      port,
-      username,
-    });
+  isConnecting = true;
+  const currentBot = mineflayer.createBot(botConfig);
+  bot = currentBot;
+  currentBot.loadPlugin(pathfinder);
 
-    bot.loadPlugin(pathfinder);
+  currentBot.once("spawn", () => {
+    isConnecting = false;
+    console.error(
+      `Bot connected and spawned as ${botConfig.username} on ${botConfig.host}:${botConfig.port}`
+    );
+  });
 
-    bot.once("spawn", () => {
-      resolve(`Bot connected and spawned as ${username} on ${host}:${port}`);
-    });
+  currentBot.once("error", (err) => {
+    isConnecting = false;
+    console.error(`Bot error: ${err.message}`);
+    bot = null;
+    scheduleReconnect("error");
+  });
 
-    bot.on("error", (err) => {
-      reject(new Error(`Error connecting bot: ${err.message}`));
-    });
+  currentBot.once("end", () => {
+    isConnecting = false;
+    bot = null;
+    scheduleReconnect("disconnect");
   });
 }
-
-/**
- * Register the connect_bot tool.
- */
-server.tool(
-  "connect_bot",
-  {
-    host: z.string().describe("Minecraft server host"),
-    port: z.number().default(25565).describe("Minecraft server port"),
-    username: z.string().default("MCP-Bot").describe("Bot username"),
-  },
-  async ({ host, port, username }) => {
-    try {
-      const message = await connectBot(host, port, username);
-      return { content: [{ type: "text", text: message }] };
-    } catch (err: any) {
-      return { content: [{ type: "text", text: err.message }], isError: true };
-    }
-  }
-);
 
 /**
  * Register the goto_coordinates tool.
@@ -78,7 +85,7 @@ server.tool(
   async ({ x, y, z: coordZ }) => {
     if (!bot) {
       return {
-        content: [{ type: "text", text: "Bot is not connected. Use connect_bot first." }],
+        content: [{ type: "text", text: "Bot is not connected yet. Check MC_HOST/MC_PORT/MC_USERNAME." }],
         isError: true,
       };
     }
@@ -97,17 +104,7 @@ server.tool(
  * Start the server.
  */
 async function main() {
-  // 1. Auto-connect if environment variables are set
-  const autoHost = process.env.MC_HOST;
-  const autoPort = parseInt(process.env.MC_PORT || "25565");
-  const autoUsername = process.env.MC_USERNAME || "MCP-Bot";
-
-  if (autoHost) {
-    console.error(`Attempting auto-connect to ${autoHost}:${autoPort}...`);
-    connectBot(autoHost, autoPort, autoUsername)
-      .then((msg) => console.error(msg))
-      .catch((err) => console.error(err.message));
-  }
+  connectBot();
 
   // 2. Select transport
   const transportMode = process.env.MCP_TRANSPORT || "stdio";

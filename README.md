@@ -52,14 +52,15 @@ npm run dev
 *   `MCP_TRANSPORT`: Set to `remote` to enable the HTTP/SSE server (default: `stdio`).
 *   `PORT`: Port for the remote server (default: `3000`).
 *   `HOST`: Host for the remote server (default: `0.0.0.0`).
-*   `MC_HOST`: Minecraft server host for auto-connect.
+*   `MC_HOST`: Minecraft server host used at startup (default: `localhost`).
 *   `MC_PORT`: Minecraft server port (default: `25565`).
 *   `MC_USERNAME`: Bot username (default: `MCP-Bot`).
 
 ## Available Tools
 
-- `connect_bot`: Establishes the physical presence in a Minecraft world.
 - `goto_coordinates`: Autonomous navigation to a destination using A* pathfinding.
+
+The server manages exactly one bot process and attempts connection automatically on startup.
 
 ## License
 
