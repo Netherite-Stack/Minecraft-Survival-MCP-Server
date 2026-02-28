@@ -3,10 +3,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import mineflayer from "mineflayer";
-import { pathfinder } from "mineflayer-pathfinder";
+import pathfinderPkg from "mineflayer-pathfinder";
 import { randomUUID } from "node:crypto";
 import pkg from "../package.json" with { type: "json" };
+import { registerMovementTools } from "./tools/movement/index.js";
 import { registerMultiplayerTools } from "./tools/multiplayer/index.js";
+
+const { pathfinder } = pathfinderPkg;
 
 /**
  * Define your MCP server using the modern McpServer class.
@@ -73,6 +76,7 @@ function connectBot() {
 }
 
 registerMultiplayerTools(server, () => bot);
+registerMovementTools(server, () => bot);
 
 /**
  * Start the server.

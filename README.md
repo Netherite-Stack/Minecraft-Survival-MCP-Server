@@ -31,7 +31,7 @@ Instead of asking the LLM to "Move forward, then turn left, then jump," the LLM 
 
 ### 2. Transactional Operations
 Complex tasks are exposed as single high-level transactions.
-*   **Current:** `goto_coordinates`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
+*   **Current:** `move_to_coordinates`, `move_to_player`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
 *   **Planned:** `build_structure` (Geometric templates handled by the server), `harvest_area` (Area scanning and path optimization).
 
 ### 3. Reduced Cognitive Load
@@ -58,7 +58,8 @@ npm run dev
 
 ## Available Tools
 
-- `goto_coordinates`: Autonomous navigation to a destination using A* pathfinding.
+- `move_to_coordinates`: Move to target coordinates with configurable `allow_block_breaking`, `allow_block_placement`, and `timeout_ms`.
+- `move_to_player`: Move near a player with configurable `range`, `allow_block_breaking`, `allow_block_placement`, and `timeout_ms`.
 - `list_players`: Get all currently known players on the server.
 - `find_player`: Search players by partial username (case-insensitive).
 - `get_player_coordinates`: Get coordinates of a visible player.
