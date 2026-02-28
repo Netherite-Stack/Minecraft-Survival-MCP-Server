@@ -31,7 +31,7 @@ Instead of asking the LLM to "Move forward, then turn left, then jump," the LLM 
 
 ### 2. Transactional Operations
 Complex tasks are exposed as single high-level transactions.
-*   **Current:** `goto_coordinates` (Autonomous navigation).
+*   **Current:** `goto_coordinates`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
 *   **Planned:** `build_structure` (Geometric templates handled by the server), `harvest_area` (Area scanning and path optimization).
 
 ### 3. Reduced Cognitive Load
@@ -59,6 +59,11 @@ npm run dev
 ## Available Tools
 
 - `goto_coordinates`: Autonomous navigation to a destination using A* pathfinding.
+- `list_players`: Get all currently known players on the server.
+- `find_player`: Search players by partial username (case-insensitive).
+- `get_player_coordinates`: Get coordinates of a visible player.
+- `distance_to_player`: Calculate 3D distance from the bot to a player in blocks.
+- `find_nearest_players`: Find the nearest `x_parameter` visible players.
 
 The server manages exactly one bot process and attempts connection automatically on startup.
 

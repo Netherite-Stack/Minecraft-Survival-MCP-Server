@@ -2,11 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { z } from "zod";
 import mineflayer from "mineflayer";
-import { pathfinder, Movements, goals } from "mineflayer-pathfinder";
+import { pathfinder } from "mineflayer-pathfinder";
 import { randomUUID } from "node:crypto";
 import pkg from "../package.json" with { type: "json" };
+import { registerMultiplayerTools } from "./tools/multiplayer/index.js";
 
 /**
  * Define your MCP server using the modern McpServer class.
@@ -72,33 +72,7 @@ function connectBot() {
   });
 }
 
-/**
- * Register the goto_coordinates tool.
- */
-server.tool(
-  "goto_coordinates",
-  {
-    x: z.number(),
-    y: z.number(),
-    z: z.number(),
-  },
-  async ({ x, y, z: coordZ }) => {
-    if (!bot) {
-      return {
-        content: [{ type: "text", text: "Bot is not connected yet. Check MC_HOST/MC_PORT/MC_USERNAME." }],
-        isError: true,
-      };
-    }
-
-    const defaultMove = new Movements(bot);
-    bot.pathfinder.setMovements(defaultMove);
-    bot.pathfinder.setGoal(new goals.GoalBlock(x, y, coordZ));
-
-    return {
-      content: [{ type: "text", text: `Pathfinding to ${x}, ${y}, ${coordZ}...` }],
-    };
-  }
-);
+registerMultiplayerTools(server, () => bot);
 
 /**
  * Start the server.
