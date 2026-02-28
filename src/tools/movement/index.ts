@@ -68,6 +68,41 @@ export function registerMovementTools(
   getBot: () => mineflayer.Bot | null
 ) {
   server.registerTool(
+    "get_own_position",
+    {
+      description: "Get the bot's current coordinates.",
+    },
+    async () => {
+      const bot = getBot();
+
+      if (!bot) {
+        return {
+          content: [{ type: "text", text: "Bot is not connected yet." }],
+          isError: true,
+        };
+      }
+
+      if (!bot.entity) {
+        return {
+          content: [{ type: "text", text: "Bot entity is not available yet." }],
+          isError: true,
+        };
+      }
+
+      const { x, y, z: currentZ } = bot.entity.position;
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `x=${x.toFixed(2)}, y=${y.toFixed(2)}, z=${currentZ.toFixed(2)}`,
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
     "move_to_coordinates",
     {
       description: "Move bot to coordinates with pathfinder and configurable dig/place behavior.",

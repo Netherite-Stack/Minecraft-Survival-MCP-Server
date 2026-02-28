@@ -86,6 +86,18 @@ function createBot(overrides: Partial<any> = {}) {
 }
 
 describe("movement tools", () => {
+  it("returns own position coordinates", async () => {
+    const bot = createBot({
+      entity: { position: { x: 12.345, y: 70, z: -4.5 } },
+    });
+    const harness = createHarness(bot);
+
+    const result = await harness.call("get_own_position");
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toBe("x=12.35, y=70.00, z=-4.50");
+  });
+
   it("returns an error when bot is not connected", async () => {
     const harness = createHarness(null);
 

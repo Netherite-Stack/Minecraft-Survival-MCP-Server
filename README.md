@@ -31,7 +31,7 @@ Instead of asking the LLM to "Move forward, then turn left, then jump," the LLM 
 
 ### 2. Transactional Operations
 Complex tasks are exposed as single high-level transactions.
-*   **Current:** `move_to_coordinates`, `move_to_player`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
+*   **Current:** `move_to_coordinates`, `move_to_player`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
 *   **Planned:** `build_structure` (Geometric templates handled by the server), `harvest_area` (Area scanning and path optimization).
 
 ### 3. Reduced Cognitive Load
@@ -58,8 +58,21 @@ npm run dev
 
 ## Available Tools
 
+### Movement Module
+
+- `get_own_position`: Get the bot's current coordinates.
 - `move_to_coordinates`: Move to target coordinates with configurable `allow_block_breaking`, `allow_block_placement`, and `timeout_ms`.
 - `move_to_player`: Move near a player with configurable `range`, `allow_block_breaking`, `allow_block_placement`, and `timeout_ms`.
+
+### Mining Module
+
+- `mine_block_by_coords`: Mine one block with mineability/tool checks and `timeout_ms`.
+- `mine_room`: Mine all blocks in a rectangular area (`start`, `length`, `width`, `depth`) with `timeout_ms`.
+- `break_tree`: Break all connected logs from a selected log block with `timeout_ms`.
+- `mine_stairs`: Create a descending stair tunnel to a target depth with `timeout_ms`.
+
+### Multiplayer Module
+
 - `list_players`: Get all currently known players on the server.
 - `find_player`: Search players by partial username (case-insensitive).
 - `get_player_coordinates`: Get coordinates of a visible player.

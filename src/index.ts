@@ -7,6 +7,7 @@ import pathfinderPkg from "mineflayer-pathfinder";
 import { randomUUID } from "node:crypto";
 import pkg from "../package.json" with { type: "json" };
 import { registerMovementTools } from "./tools/movement/index.js";
+import { registerMiningTools } from "./tools/mining/index.js";
 import { registerMultiplayerTools } from "./tools/multiplayer/index.js";
 
 const { pathfinder } = pathfinderPkg;
@@ -77,6 +78,7 @@ function connectBot() {
 
 registerMultiplayerTools(server, () => bot);
 registerMovementTools(server, () => bot);
+registerMiningTools(server, () => bot);
 
 /**
  * Start the server.
