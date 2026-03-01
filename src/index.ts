@@ -11,6 +11,7 @@ import { registerMiningTools } from "./tools/mining/index.js";
 import { registerMultiplayerTools } from "./tools/multiplayer/index.js";
 import { registerVisionTools } from "./tools/vision/index.js";
 import { registerWikiTools } from "./tools/wiki/index.js";
+import { registerBuildingTools } from "./tools/building/index.js";
 
 const { pathfinder } = pathfinderPkg;
 
@@ -79,6 +80,7 @@ function createServer() {
   registerMultiplayerTools(server, () => bot);
   registerMovementTools(server, () => bot);
   registerMiningTools(server, () => bot);
+  registerBuildingTools(server, () => bot);
   registerVisionTools(server, () => bot);
   registerWikiTools(server, () => bot);
 

@@ -43,7 +43,7 @@ Instead of asking the LLM to "Move forward, then turn left, then jump," the LLM 
 
 ### 2. Transactional Operations
 Complex tasks are exposed as single high-level transactions.
-*   **Current:** `get_own_position`, `move_to_coordinates`, `move_to_player`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `capture_bot_view`, `locate_blocks_in_area`, `locate_dropped_items`, `search_blocks_wiki`, `search_items_wiki`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
+*   **Current:** `get_own_position`, `move_to_coordinates`, `move_to_player`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `place_block_at`, `place_wall`, `place_ceiling`, `capture_bot_view`, `locate_blocks_in_area`, `locate_dropped_items`, `search_blocks_wiki`, `search_items_wiki`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
 *   **Planned:** `build_structure` (Geometric templates handled by the server), `harvest_area` (Area scanning and path optimization).
 
 ### 3. Reduced Cognitive Load
@@ -82,6 +82,12 @@ npm run dev
 - `mine_room`: Mine a cuboid area layer-by-layer. Inputs: `start_x`, `start_y`, `start_z`, `length`, `width`, `depth`, `timeout_ms`.
 - `break_tree`: Break all connected log-like blocks (`log`, `stem`, `hyphae`). Inputs: `x`, `y`, `z`, `timeout_ms`, `allow_build_up_if_needed`.
 - `mine_stairs`: Create a descending stair tunnel to a target depth. Inputs: `depth`, `timeout_ms`.
+
+### Building Module
+
+- `place_block_at`: Place one block at coordinates with support/entity/inventory checks. Inputs: `block_name`, `x`, `y`, `z`, `timeout_ms`.
+- `place_wall`: Place a wall plane from start coordinates. Inputs: `block_name`, `start_x`, `start_y`, `start_z`, `x_length`, `y_height`, `z_length`, optional `x_direction`, `y_direction`, `z_direction`, `timeout_ms`. Resource check is enforced before building.
+- `place_ceiling`: Place a ceiling plane from start coordinates. Inputs: `block_name`, `start_x`, `start_y`, `start_z`, `x_length`, `z_length`, optional `x_direction`, `z_direction`, `timeout_ms`. Resource check is enforced before building.
 
 ### Vision Module
 
