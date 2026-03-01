@@ -9,6 +9,15 @@ import { matchQuery } from "../shared/query-matcher.js";
 
 const require = createRequire(import.meta.url);
 
+function isTruthyEnv(value: string | undefined) {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
 async function captureBotScreenshot(
   bot: mineflayer.Bot,
   options: {
@@ -101,77 +110,81 @@ export function registerVisionTools(
   server: McpServer,
   getBot: () => mineflayer.Bot | null
 ) {
-  server.registerTool(
-    "capture_bot_view",
-    {
-      description:
-        "Capture a first-person screenshot after looking at the target coordinates. `view_distance` is in blocks (not chunks). Required inputs: look_at_x, look_at_y, look_at_z.",
-      inputSchema: {
-        width: z.number().int().min(320).max(4096).default(800),
-        height: z.number().int().min(200).max(4096).default(400),
-        view_distance: z.number().int().min(16).max(192).default(96),
-        quality: z.number().min(0.1).max(1).default(0.9),
-        look_at_x: z.number(),
-        look_at_y: z.number(),
-        look_at_z: z.number(),
+  const imagesEnabled = isTruthyEnv(process.env.ENABLE_IMAGES);
+
+  if (imagesEnabled) {
+    server.registerTool(
+      "capture_bot_view",
+      {
+        description:
+          "Capture a first-person screenshot after looking at the target coordinates. `view_distance` is in blocks (not chunks). Required inputs: look_at_x, look_at_y, look_at_z.",
+        inputSchema: {
+          width: z.number().int().min(320).max(4096).default(800),
+          height: z.number().int().min(200).max(4096).default(400),
+          view_distance: z.number().int().min(16).max(192).default(96),
+          quality: z.number().min(0.1).max(1).default(0.9),
+          look_at_x: z.number(),
+          look_at_y: z.number(),
+          look_at_z: z.number(),
+        },
       },
-    },
-    async ({ width, height, view_distance, quality, look_at_x, look_at_y, look_at_z }) => {
-      const bot = getBot();
+      async ({ width, height, view_distance, quality, look_at_x, look_at_y, look_at_z }) => {
+        const bot = getBot();
 
-      if (!bot) {
-        return {
-          content: [{ type: "text", text: "Bot is not connected yet." }],
-          isError: true,
-        };
+        if (!bot) {
+          return {
+            content: [{ type: "text", text: "Bot is not connected yet." }],
+            isError: true,
+          };
+        }
+
+        if (!bot.entity) {
+          return {
+            content: [{ type: "text", text: "Bot entity is not available yet." }],
+            isError: true,
+          };
+        }
+
+        const lookAt = new Vec3(look_at_x, look_at_y, look_at_z);
+
+        try {
+          const screenshot = await captureBotScreenshot(bot, {
+            width,
+            height,
+            viewDistanceBlocks: view_distance,
+            quality,
+            lookAt,
+          });
+
+          const base64Image = screenshot.buffer.toString("base64");
+
+          return {
+            content: [
+              {
+                type: "image",
+                mimeType: "image/jpeg",
+                data: base64Image,
+              },
+              {
+                type: "text",
+                text: `Screenshot captured while looking at x=${lookAt.x}, y=${lookAt.y}, z=${lookAt.z}: ${screenshot.filePath}`,
+              },
+            ],
+          };
+        } catch (error: unknown) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Failed to capture screenshot: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+            isError: true,
+          };
+        }
       }
-
-      if (!bot.entity) {
-        return {
-          content: [{ type: "text", text: "Bot entity is not available yet." }],
-          isError: true,
-        };
-      }
-
-      const lookAt = new Vec3(look_at_x, look_at_y, look_at_z);
-
-      try {
-        const screenshot = await captureBotScreenshot(bot, {
-          width,
-          height,
-          viewDistanceBlocks: view_distance,
-          quality,
-          lookAt,
-        });
-
-        const base64Image = screenshot.buffer.toString("base64");
-
-        return {
-          content: [
-            {
-              type: "image",
-              mimeType: "image/jpeg",
-              data: base64Image,
-            },
-            {
-              type: "text",
-              text: `Screenshot captured while looking at x=${lookAt.x}, y=${lookAt.y}, z=${lookAt.z}: ${screenshot.filePath}`,
-            },
-          ],
-        };
-      } catch (error: unknown) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Failed to capture screenshot: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  );
+    );
+  }
 
   server.registerTool(
     "locate_dropped_items",

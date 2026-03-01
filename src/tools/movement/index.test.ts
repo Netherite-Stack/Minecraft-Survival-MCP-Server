@@ -250,7 +250,7 @@ describe("movement tools", () => {
       const result = await promise;
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("timed out");
+      expect(result.content[0].text).toContain("No movement progress");
       expect(bot.pathfinder.setGoal).toHaveBeenCalledWith(null);
     } finally {
       vi.useRealTimers();

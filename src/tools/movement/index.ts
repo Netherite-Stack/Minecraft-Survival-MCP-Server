@@ -30,15 +30,50 @@ async function runGoalWithTimeout(
   await new Promise<void>((resolve, reject) => {
     let done = false;
 
-    const timer = setTimeout(() => {
+    const getPosition = () => {
+      const pos = bot.entity?.position;
+
+      return {
+        x: pos?.x ?? 0,
+        y: pos?.y ?? 0,
+        z: pos?.z ?? 0,
+      };
+    };
+
+    const hasMoved = (
+      a: { x: number; y: number; z: number },
+      b: { x: number; y: number; z: number }
+    ) => {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const dz = a.z - b.z;
+
+      return dx * dx + dy * dy + dz * dz >= 0.01;
+    };
+
+    let lastPos = getPosition();
+    let lastProgressAt = Date.now();
+
+    const progressTimer = setInterval(() => {
       if (done) {
         return;
       }
 
-      done = true;
-      bot.pathfinder.setGoal(null);
-      reject(new Error(`Movement timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
+      const currentPos = getPosition();
+
+      if (hasMoved(currentPos, lastPos)) {
+        lastPos = currentPos;
+        lastProgressAt = Date.now();
+        return;
+      }
+
+      if (Date.now() - lastProgressAt >= timeoutMs) {
+        done = true;
+        clearInterval(progressTimer);
+        bot.pathfinder.setGoal(null);
+        reject(new Error(`No movement progress for ${timeoutMs}ms`));
+      }
+    }, 250);
 
     bot.pathfinder
       .goto(goal)
@@ -48,7 +83,7 @@ async function runGoalWithTimeout(
         }
 
         done = true;
-        clearTimeout(timer);
+        clearInterval(progressTimer);
         resolve();
       })
       .catch((error: unknown) => {
@@ -57,7 +92,7 @@ async function runGoalWithTimeout(
         }
 
         done = true;
-        clearTimeout(timer);
+        clearInterval(progressTimer);
         reject(error instanceof Error ? error : new Error(String(error)));
       });
   });
@@ -78,6 +113,13 @@ export function registerMovementTools(
       if (!bot) {
         return {
           content: [{ type: "text", text: "Bot is not connected yet." }],
+          isError: true,
+        };
+      }
+
+      if (!bot.entity) {
+        return {
+          content: [{ type: "text", text: "Bot entity is not available yet." }],
           isError: true,
         };
       }
@@ -121,6 +163,13 @@ export function registerMovementTools(
       if (!bot) {
         return {
           content: [{ type: "text", text: "Bot is not connected yet." }],
+          isError: true,
+        };
+      }
+
+      if (!bot.entity) {
+        return {
+          content: [{ type: "text", text: "Bot entity is not available yet." }],
           isError: true,
         };
       }

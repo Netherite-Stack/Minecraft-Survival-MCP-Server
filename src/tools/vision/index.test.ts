@@ -7,9 +7,16 @@ type RegisteredTool = {
   cb: (args?: Record<string, unknown>, extra?: unknown) => Promise<any>;
 };
 
-function createHarness(initialBot: any = null) {
+function createHarness(initialBot: any = null, options: { enableImages?: boolean } = {}) {
   const tools = new Map<string, RegisteredTool>();
   let bot = initialBot;
+
+  const previousEnableImages = process.env.ENABLE_IMAGES;
+  if (options.enableImages ?? true) {
+    process.env.ENABLE_IMAGES = "true";
+  } else {
+    delete process.env.ENABLE_IMAGES;
+  }
 
   const server = {
     registerTool(name: string, _config: unknown, cb: RegisteredTool["cb"]) {
@@ -19,6 +26,12 @@ function createHarness(initialBot: any = null) {
   } as unknown as McpServer;
 
   registerVisionTools(server, () => bot);
+
+  if (previousEnableImages === undefined) {
+    delete process.env.ENABLE_IMAGES;
+  } else {
+    process.env.ENABLE_IMAGES = previousEnableImages;
+  }
 
   return {
     async call(name: string, args?: Record<string, unknown>) {
@@ -33,6 +46,22 @@ function createHarness(initialBot: any = null) {
 }
 
 describe("vision tools", () => {
+  it("does not register capture tool unless ENABLE_IMAGES is set", async () => {
+    const harness = createHarness(null, { enableImages: false });
+
+    await expect(
+      harness.call("capture_bot_view", {
+        width: 800,
+        height: 400,
+        view_distance: 6,
+        quality: 0.9,
+        look_at_x: 0,
+        look_at_y: 64,
+        look_at_z: 0,
+      })
+    ).rejects.toThrow("Tool not registered");
+  });
+
   it("returns an error for screenshot capture when bot is not connected", async () => {
     const harness = createHarness(null);
     const result = await harness.call("capture_bot_view", {
@@ -40,6 +69,9 @@ describe("vision tools", () => {
       height: 400,
       view_distance: 6,
       quality: 0.9,
+      look_at_x: 0,
+      look_at_y: 64,
+      look_at_z: 0,
     });
 
     expect(result.isError).toBe(true);

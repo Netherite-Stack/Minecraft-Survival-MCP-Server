@@ -67,6 +67,7 @@ npm run dev
 *   `MC_HOST`: Minecraft server host used at startup (default: `localhost`).
 *   `MC_PORT`: Minecraft server port (default: `25565`).
 *   `MC_USERNAME`: Bot username (default: `MCP-Bot`).
+*   `ENABLE_IMAGES`: Set to `1`/`true` to enable registration of `capture_bot_view`.
 
 ## Available Tools
 
