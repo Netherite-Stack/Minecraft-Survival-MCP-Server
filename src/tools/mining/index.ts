@@ -673,4 +673,5 @@ export function registerMiningTools(
       }
     }
   );
+
 }

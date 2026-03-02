@@ -297,7 +297,7 @@ export function registerVisionTools(
     "locate_blocks_in_area",
     {
       description:
-        "Locate blocks by query in an area and return nearest matches with optional result limit.",
+        "Locate blocks by query in an area and return nearest matches with optional result limit. Supports OR queries with ',' or '|' (for example: 'gold_ore,deepslate_gold_ore'). Wildcards like '*gold*' are usually the most reliable option.",
       inputSchema: {
         query: z.string().min(1),
         radius: z.number().int().min(1).max(128).default(32),

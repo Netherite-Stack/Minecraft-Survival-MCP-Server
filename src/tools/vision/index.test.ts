@@ -175,4 +175,35 @@ describe("vision tools", () => {
     expect(result.content[0].text).toContain("oak_log @ x=1, y=64, z=0");
     expect(result.content[0].text).not.toContain("spruce_log @ x=3, y=64, z=0");
   });
+
+  it("supports OR queries with commas for block names", async () => {
+    const blocks = new Map<string, any>([
+      ["-1,64,0", { name: "gold_ore", displayName: "Gold Ore", type: 42 }],
+      ["-2,64,0", { name: "deepslate_gold_ore", displayName: "Deepslate Gold Ore", type: 43 }],
+      ["-3,64,0", { name: "iron_ore", displayName: "Iron Ore", type: 41 }],
+    ]);
+
+    const bot = {
+      entity: { position: { x: 0, y: 64, z: 0 } },
+      findBlocks: vi.fn(({ matching }: any) => {
+        return [new Vec3(-1, 64, 0), new Vec3(-2, 64, 0), new Vec3(-3, 64, 0)].filter((pos) => {
+          const b = blocks.get(`${pos.x},${pos.y},${pos.z}`);
+          return matching(b);
+        });
+      }),
+      blockAt: vi.fn((pos: Vec3) => blocks.get(`${pos.x},${pos.y},${pos.z}`) ?? null),
+    };
+
+    const harness = createHarness(bot);
+    const result = await harness.call("locate_blocks_in_area", {
+      query: "gold_ore,deepslate_gold_ore",
+      radius: 16,
+      max_results: 5,
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("gold_ore");
+    expect(result.content[0].text).toContain("deepslate_gold_ore");
+    expect(result.content[0].text).not.toContain("iron_ore");
+  });
 });

@@ -68,6 +68,7 @@ function createBot(options: {
     canDigBlock: vi.fn((b: any) => b.diggable !== false),
     equip: vi.fn(async () => {}),
     dig: vi.fn(options.digImpl ?? (async () => {})),
+    clearControlStates: vi.fn(),
     pathfinder: {
       setGoal: vi.fn(),
       setMovements: vi.fn(),
@@ -320,4 +321,5 @@ describe("mining tools", () => {
       vi.useRealTimers();
     }
   });
+
 });

@@ -12,21 +12,32 @@ export function matchQuery(
     return true;
   }
 
-  const numericId = Number(q);
-  const hasNumericId = !Number.isNaN(numericId) && String(numericId) === q;
+  const terms = q
+    .split(/[|,]/)
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0);
 
-  if (hasNumericId && candidates.some((c) => c.id === numericId)) {
-    return true;
-  }
+  const queryTerms = terms.length > 0 ? terms : [q];
 
-  if (q.includes("*")) {
-    const regex = new RegExp(`^${q.split("*").map(escapeRegex).join(".*")}$`, "i");
-    return candidates.some((c) => regex.test(c.name) || (c.displayName ? regex.test(c.displayName) : false));
-  }
+  return queryTerms.some((term) => {
+    const numericId = Number(term);
+    const hasNumericId = !Number.isNaN(numericId) && String(numericId) === term;
 
-  return candidates.some((c) => {
-    const byName = c.name.toLowerCase().includes(q);
-    const byDisplayName = c.displayName ? c.displayName.toLowerCase().includes(q) : false;
-    return byName || byDisplayName;
+    if (hasNumericId && candidates.some((c) => c.id === numericId)) {
+      return true;
+    }
+
+    if (term.includes("*")) {
+      const regex = new RegExp(`^${term.split("*").map(escapeRegex).join(".*")}$`, "i");
+      return candidates.some(
+        (c) => regex.test(c.name) || (c.displayName ? regex.test(c.displayName) : false)
+      );
+    }
+
+    return candidates.some((c) => {
+      const byName = c.name.toLowerCase().includes(term);
+      const byDisplayName = c.displayName ? c.displayName.toLowerCase().includes(term) : false;
+      return byName || byDisplayName;
+    });
   });
 }
