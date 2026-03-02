@@ -36,6 +36,42 @@ function isTruthyEnv(value: string | undefined) {
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 }
 
+function resolveBiomeLabel(bot: mineflayer.Bot, biome: { id?: number; name?: string; displayName?: string } | null) {
+  const rawName = typeof biome?.name === "string" ? biome.name.trim() : "";
+  const rawDisplayName = typeof biome?.displayName === "string" ? biome.displayName.trim() : "";
+
+  if (rawName.length > 0) {
+    return {
+      name: rawName,
+      displayName: rawDisplayName || rawName,
+    };
+  }
+
+  const biomeId = typeof biome?.id === "number" ? biome.id : null;
+  if (biomeId === null) {
+    return { name: "unknown", displayName: "Unknown" };
+  }
+
+  try {
+    const mcData = require("minecraft-data")(bot.version);
+    const fromData = mcData?.biomes?.[String(biomeId)] ?? null;
+    const fromDataName = typeof fromData?.name === "string" ? fromData.name.trim() : "";
+    const fromDataDisplayName =
+      typeof fromData?.displayName === "string" ? fromData.displayName.trim() : "";
+
+    if (fromDataName.length > 0) {
+      return {
+        name: fromDataName,
+        displayName: fromDataDisplayName || fromDataName,
+      };
+    }
+  } catch {
+    // fallback below
+  }
+
+  return { name: "unknown", displayName: "Unknown" };
+}
+
 async function captureBotScreenshot(
   bot: mineflayer.Bot,
   options: {
@@ -244,14 +280,15 @@ export function registerVisionTools(
         };
       }
 
-      const biomeName = (block as any).biome?.name ?? "unknown";
-      const biomeId = (block as any).biome?.id ?? "unknown";
+      const biomeObj = (block as any).biome ?? null;
+      const biomeId = biomeObj?.id ?? "unknown";
+      const biomeLabel = resolveBiomeLabel(bot, biomeObj);
 
       return {
         content: [
           {
             type: "text",
-            text: `Biome at x=${px}, y=${py}, z=${pz}: name=${biomeName}, id=${biomeId}`,
+            text: `Biome at x=${px}, y=${py}, z=${pz}: name=${biomeLabel.name}, display_name=${biomeLabel.displayName}, id=${biomeId}`,
           },
         ],
       };

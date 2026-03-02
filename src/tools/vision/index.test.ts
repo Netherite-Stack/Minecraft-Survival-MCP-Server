@@ -92,7 +92,27 @@ describe("vision tools", () => {
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0].text).toContain("name=plains");
+    expect(result.content[0].text).toContain("display_name=plains");
     expect(result.content[0].text).toContain("id=1");
+  });
+
+  it("falls back to minecraft-data when biome name is missing", async () => {
+    const bot = {
+      version: "1.21.4",
+      entity: { position: { x: -140, y: 71, z: -506 } },
+      blockAt: vi.fn(() => ({ biome: { name: "", id: 40 } })),
+      findBlocks: vi.fn(),
+      entities: {},
+      time: { timeOfDay: 0, isDay: true, doDaylightCycle: true, day: 0 },
+    };
+
+    const harness = createHarness(bot);
+    const result = await harness.call("get_biome_info", { x: -140, y: 71, z: -506 });
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("name=plains");
+    expect(result.content[0].text).toContain("display_name=Plains");
+    expect(result.content[0].text).toContain("id=40");
   });
 
   it("returns daytime info with ticks until sleep", async () => {
