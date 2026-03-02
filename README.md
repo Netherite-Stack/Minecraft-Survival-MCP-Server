@@ -123,7 +123,7 @@ npm run dev
 ### Crafting Module
 
 - `craft_item`: Craft an item by name and amount. Uses inventory crafting or a nearby crafting table. On failure, returns actionable guidance about missing resources and/or crafting table requirement. Inputs: `item`, `amount`.
-- `smelt_item`: Smelt an item in a nearby furnace-like block. On failure, returns actionable guidance about missing furnace, fuel, and/or input resources. Inputs: `item`, `amount`, optional `fuel_query`, optional `timeout_ms`.
+- `smelt_item`: Smelt an item in a nearby furnace-like block. On failure, returns actionable guidance about missing furnace, fuel, and/or input resources. Inputs: `item`, `amount`, optional `fuel_query`. Uses a fixed internal timeout (2x the normal Minecraft smelt time) for progress stalls.
 
 ### Multiplayer Module
 

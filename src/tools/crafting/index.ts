@@ -54,6 +54,10 @@ const FUEL_ITEMS_PER_UNIT: Record<string, number> = {
   stick: 0.5,
 };
 
+const MINECRAFT_SMELT_TICKS_PER_ITEM = 200;
+const TICK_DURATION_MS = 50;
+const SMELT_PROGRESS_TIMEOUT_MS = MINECRAFT_SMELT_TICKS_PER_ITEM * TICK_DURATION_MS * 2;
+
 function resolveTargetItem(bot: mineflayer.Bot, query: string): RegistryItem | null {
   const items = Object.values((bot.registry as any).itemsByName ?? {}) as RegistryItem[];
   const matches = items
@@ -385,10 +389,9 @@ export function registerCraftingTools(server: McpServer, getBot: () => mineflaye
         item: z.string().min(1),
         amount: z.number().int().min(1).max(256).default(1),
         fuel_query: z.string().min(1).optional(),
-        timeout_ms: z.number().int().min(5000).max(600000).default(120000),
       },
     },
-    async ({ item, amount, fuel_query, timeout_ms }) => {
+    async ({ item, amount, fuel_query }) => {
       const bot = getBot();
 
       if (!bot) {
@@ -481,7 +484,7 @@ export function registerCraftingTools(server: McpServer, getBot: () => mineflaye
           ensuredFuel.requiredFuelItems
         );
 
-        const collected = await waitForSmeltingOutput(furnace, amount, timeout_ms);
+        const collected = await waitForSmeltingOutput(furnace, amount, SMELT_PROGRESS_TIMEOUT_MS);
 
         if (collected < amount) {
           return {

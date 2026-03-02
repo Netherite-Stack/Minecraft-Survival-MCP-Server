@@ -227,7 +227,6 @@ describe("crafting tools", () => {
     const result = await harness.call("smelt_item", {
       item: "iron_ore",
       amount: 2,
-      timeout_ms: 800,
     });
 
     expect(result.isError).toBeUndefined();
@@ -261,7 +260,6 @@ describe("crafting tools", () => {
     const result = await harness.call("smelt_item", {
       item: "iron_ore",
       amount: 2,
-      timeout_ms: 60000,
     });
 
     expect(result.isError).toBe(true);
