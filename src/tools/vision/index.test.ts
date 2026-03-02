@@ -78,6 +78,130 @@ describe("vision tools", () => {
     expect(result.content[0].text).toContain("not connected");
   });
 
+  it("returns biome info for current position", async () => {
+    const bot = {
+      entity: { position: { x: 10, y: 64, z: -3 } },
+      blockAt: vi.fn(() => ({ biome: { name: "plains", id: 1 } })),
+      findBlocks: vi.fn(),
+      entities: {},
+      time: { timeOfDay: 0, isDay: true, doDaylightCycle: true, day: 0 },
+    };
+
+    const harness = createHarness(bot);
+    const result = await harness.call("get_biome_info");
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("name=plains");
+    expect(result.content[0].text).toContain("id=1");
+  });
+
+  it("returns daytime info with ticks until sleep", async () => {
+    const bot = {
+      entity: { position: { x: 0, y: 64, z: 0 } },
+      blockAt: vi.fn(),
+      findBlocks: vi.fn(),
+      entities: {},
+      time: { timeOfDay: 6000, isDay: true, doDaylightCycle: true, day: 5 },
+    };
+
+    const harness = createHarness(bot);
+    const result = await harness.call("get_daytime_info");
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("time_of_day=6000");
+    expect(result.content[0].text).toContain("can_sleep_now=false");
+    expect(result.content[0].text).toContain("ticks_until_sleep=6542");
+  });
+
+  it("sleeps in nearest bed with timeout guard", async () => {
+    const bed = { type: 26, name: "red_bed", position: { x: 1, y: 64, z: 0 } };
+    const bot = {
+      entity: { position: { x: 0, y: 64, z: 0 } },
+      registry: { blocksByName: { red_bed: { id: 26 } } },
+      blockAt: vi.fn(() => bed),
+      findBlocks: vi.fn(),
+      findBlock: vi.fn(() => bed),
+      entities: {},
+      time: { timeOfDay: 13000, isDay: false, doDaylightCycle: true, day: 5 },
+      isABed: vi.fn(() => true),
+      sleep: vi.fn(async () => {}),
+    };
+
+    const harness = createHarness(bot);
+    const result = await harness.call("sleep_in_bed", {
+      max_distance: 6,
+      timeout_ms: 5000,
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("now sleeping");
+    expect(bot.sleep).toHaveBeenCalledWith(bed);
+  });
+
+  it("returns timeout error when sleeping hangs", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const bed = { type: 26, name: "red_bed", position: { x: 1, y: 64, z: 0 } };
+      const bot = {
+        entity: { position: { x: 0, y: 64, z: 0 } },
+        registry: { blocksByName: { red_bed: { id: 26 } } },
+        blockAt: vi.fn(() => bed),
+        findBlocks: vi.fn(),
+        findBlock: vi.fn(() => bed),
+        entities: {},
+        time: { timeOfDay: 13000, isDay: false, doDaylightCycle: true, day: 5 },
+        isABed: vi.fn(() => true),
+        sleep: vi.fn(
+          () =>
+            new Promise<void>(() => {
+              // never resolves
+            })
+        ),
+      };
+
+      const harness = createHarness(bot);
+      const promise = harness.call("sleep_in_bed", {
+        max_distance: 6,
+        timeout_ms: 1000,
+      });
+
+      await vi.advanceTimersByTimeAsync(1100);
+      const result = await promise;
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("timed out");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("returns clear error when bed is occupied", async () => {
+    const bed = { type: 26, name: "red_bed", position: { x: 1, y: 64, z: 0 } };
+    const bot = {
+      entity: { position: { x: 0, y: 64, z: 0 } },
+      registry: { blocksByName: { red_bed: { id: 26 } } },
+      blockAt: vi.fn(() => bed),
+      findBlocks: vi.fn(),
+      findBlock: vi.fn(() => bed),
+      entities: {},
+      time: { timeOfDay: 13000, isDay: false, doDaylightCycle: true, day: 5 },
+      isABed: vi.fn(() => true),
+      sleep: vi.fn(async () => {
+        throw new Error("Bed is occupied");
+      }),
+    };
+
+    const harness = createHarness(bot);
+    const result = await harness.call("sleep_in_bed", {
+      max_distance: 6,
+      timeout_ms: 5000,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("Bed is occupied");
+  });
+
   it("locates dropped items sorted by distance and supports max_results", async () => {
     const bot = {
       entity: { position: { x: 0, y: 64, z: 0 } },

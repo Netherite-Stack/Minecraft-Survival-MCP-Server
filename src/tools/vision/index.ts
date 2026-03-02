@@ -9,6 +9,24 @@ import { matchQuery } from "../shared/query-matcher.js";
 
 const require = createRequire(import.meta.url);
 
+async function runWithTimeout<T>(operation: Promise<T>, timeoutMs: number, timeoutLabel: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${timeoutLabel} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 function isTruthyEnv(value: string | undefined) {
   if (!value) {
     return false;
@@ -185,6 +203,220 @@ export function registerVisionTools(
       }
     );
   }
+
+  server.registerTool(
+    "get_biome_info",
+    {
+      description: "Get biome info at current position or optional target coordinates.",
+      inputSchema: {
+        x: z.number().optional(),
+        y: z.number().optional(),
+        z: z.number().optional(),
+      },
+    },
+    async (args) => {
+      const { x, y, z: targetZ } = args ?? {};
+      const bot = getBot();
+
+      if (!bot) {
+        return {
+          content: [{ type: "text", text: "Bot is not connected yet." }],
+          isError: true,
+        };
+      }
+
+      if (!bot.entity) {
+        return {
+          content: [{ type: "text", text: "Bot entity is not available yet." }],
+          isError: true,
+        };
+      }
+
+      const px = Math.floor(x ?? bot.entity.position.x);
+      const py = Math.floor(y ?? bot.entity.position.y);
+      const pz = Math.floor(targetZ ?? bot.entity.position.z);
+      const block = bot.blockAt(new Vec3(px, py, pz));
+
+      if (!block) {
+        return {
+          content: [{ type: "text", text: `Cannot resolve biome at x=${px}, y=${py}, z=${pz}: no block data.` }],
+          isError: true,
+        };
+      }
+
+      const biomeName = (block as any).biome?.name ?? "unknown";
+      const biomeId = (block as any).biome?.id ?? "unknown";
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Biome at x=${px}, y=${py}, z=${pz}: name=${biomeName}, id=${biomeId}`,
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    "get_daytime_info",
+    {
+      description:
+        "Get daytime state and ticks until sleep window starts. Uses world timeOfDay where 24000 ticks is one full day.",
+    },
+    async () => {
+      const bot = getBot();
+
+      if (!bot) {
+        return {
+          content: [{ type: "text", text: "Bot is not connected yet." }],
+          isError: true,
+        };
+      }
+
+      const time = bot.time as any;
+      const timeOfDay = Number(time?.timeOfDay ?? 0);
+      const isDay = Boolean(time?.isDay);
+      const doDaylightCycle = Boolean(time?.doDaylightCycle ?? true);
+      const day = Number(time?.day ?? 0);
+
+      const sleepStart = 12542;
+      const sleepEnd = 23458;
+      const canSleepNow = timeOfDay >= sleepStart && timeOfDay <= sleepEnd;
+
+      const ticksUntilSleep = canSleepNow
+        ? 0
+        : timeOfDay < sleepStart
+          ? sleepStart - timeOfDay
+          : 24000 - timeOfDay + sleepStart;
+
+      const secondsUntilSleep = Math.ceil((ticksUntilSleep / 20) * 10) / 10;
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Daytime: day=${day}, time_of_day=${timeOfDay}, is_day=${isDay}, can_sleep_now=${canSleepNow}, ticks_until_sleep=${ticksUntilSleep}, seconds_until_sleep=${secondsUntilSleep}, daylight_cycle=${doDaylightCycle}`,
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    "sleep_in_bed",
+    {
+      description:
+        "Sleep in a bed at optional coordinates or nearest bed in range. Includes timeout to avoid hanging calls.",
+      inputSchema: {
+        x: z.number().optional(),
+        y: z.number().optional(),
+        z: z.number().optional(),
+        max_distance: z.number().int().min(1).max(16).default(6),
+        timeout_ms: z.number().int().min(1000).max(300000).default(30000),
+      },
+    },
+    async ({ x, y, z: targetZ, max_distance, timeout_ms }) => {
+      const bot = getBot();
+
+      if (!bot) {
+        return {
+          content: [{ type: "text", text: "Bot is not connected yet." }],
+          isError: true,
+        };
+      }
+
+      if (!bot.entity) {
+        return {
+          content: [{ type: "text", text: "Bot entity is not available yet." }],
+          isError: true,
+        };
+      }
+
+      const blocksByName = ((bot.registry as any)?.blocksByName ?? {}) as Record<string, { id: number }>;
+      const bedIds = Object.entries(blocksByName)
+        .filter(([name, value]) => Boolean(value?.id) && name.endsWith("_bed"))
+        .map(([, value]) => value.id);
+
+      if (bedIds.length === 0) {
+        return {
+          content: [{ type: "text", text: "No bed block IDs found in registry for this version." }],
+          isError: true,
+        };
+      }
+
+      let bedBlock: any = null;
+
+      if (typeof x === "number" && typeof y === "number" && typeof targetZ === "number") {
+        bedBlock = bot.blockAt(new Vec3(Math.floor(x), Math.floor(y), Math.floor(targetZ)));
+      } else {
+        bedBlock = bot.findBlock({
+          maxDistance: max_distance,
+          matching: (block) => Boolean(block && bedIds.includes(block.type)),
+        });
+      }
+
+      if (!bedBlock) {
+        return {
+          content: [{ type: "text", text: "No bed found at target coordinates / in range." }],
+          isError: true,
+        };
+      }
+
+      const isBed = bot.isABed ? bot.isABed(bedBlock) : bedBlock.name?.endsWith("_bed");
+      if (!isBed) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Target block is not a bed: ${bedBlock.name ?? "unknown"} at x=${bedBlock.position.x}, y=${bedBlock.position.y}, z=${bedBlock.position.z}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const dx = bedBlock.position.x - bot.entity.position.x;
+      const dy = bedBlock.position.y - bot.entity.position.y;
+      const dz = bedBlock.position.z - bot.entity.position.z;
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      if (distance > max_distance + 1) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Bed found but too far away (${distance.toFixed(2)} blocks). Move closer and try again.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      try {
+        await runWithTimeout(bot.sleep(bedBlock), timeout_ms, "Sleep in bed");
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Bot is now sleeping in bed at x=${bedBlock.position.x}, y=${bedBlock.position.y}, z=${bedBlock.position.z}`,
+            },
+          ],
+        };
+      } catch (error: unknown) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to sleep in bed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
 
   server.registerTool(
     "locate_dropped_items",

@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type mineflayer from "mineflayer";
 import pathfinderPkg from "mineflayer-pathfinder";
+import { Vec3 } from "vec3";
 import { z } from "zod";
 
 const { Movements, goals } = pathfinderPkg;
@@ -96,6 +97,101 @@ async function runGoalWithTimeout(
         reject(error instanceof Error ? error : new Error(String(error)));
       });
   });
+}
+
+function isOpenableBlockName(name: string) {
+  return name.endsWith("_door") || name.endsWith("_trapdoor");
+}
+
+function resolveOpenableIds(bot: mineflayer.Bot) {
+  const blocksByName = ((bot.registry as any)?.blocksByName ?? {}) as Record<string, { id: number }>;
+
+  return Object.entries(blocksByName)
+    .filter(([name, value]) => Boolean(value?.id) && isOpenableBlockName(name))
+    .map(([, value]) => value.id);
+}
+
+function getBlockOpenState(block: any): boolean | null {
+  if (!block) {
+    return null;
+  }
+
+  const props = block.getProperties?.();
+  if (props && typeof props.open === "boolean") {
+    return props.open;
+  }
+
+  if (typeof block.open === "boolean") {
+    return block.open;
+  }
+
+  return null;
+}
+
+async function setOpenableState(
+  bot: mineflayer.Bot,
+  desiredOpen: boolean,
+  options: { x?: number; y?: number; z?: number; max_distance: number }
+) {
+  const ids = resolveOpenableIds(bot);
+  if (ids.length === 0) {
+    throw new Error("No door/trapdoor block IDs available in registry for this version.");
+  }
+
+  let target = null as any;
+
+  if (
+    typeof options.x === "number" &&
+    typeof options.y === "number" &&
+    typeof options.z === "number"
+  ) {
+    target = bot.blockAt(new Vec3(Math.floor(options.x), Math.floor(options.y), Math.floor(options.z)));
+  } else {
+    target = bot.findBlock({
+      maxDistance: options.max_distance,
+      matching: (block) => Boolean(block && ids.includes(block.type)),
+    });
+  }
+
+  if (!target) {
+    throw new Error("No door or trapdoor found at target coordinates / in range.");
+  }
+
+  if (!isOpenableBlockName(target.name)) {
+    throw new Error(`Target block is not a door/trapdoor: ${target.name}`);
+  }
+
+  const center = target.position.offset(0.5, 0.5, 0.5);
+  await bot.lookAt(center, true);
+
+  let state = getBlockOpenState(target);
+
+  if (state === desiredOpen) {
+    return {
+      changed: false,
+      blockName: target.name,
+      position: target.position,
+      state,
+    };
+  }
+
+  await bot.activateBlock(target);
+
+  const updated = bot.blockAt(target.position) ?? target;
+  state = getBlockOpenState(updated);
+
+  if (state !== desiredOpen) {
+    throw new Error(
+      `Failed to ${desiredOpen ? "open" : "close"} ${target.name} at x=${target.position.x}, y=${target.position.y}, z=${target.position.z}. It may be iron-powered or blocked.`
+    );
+  }
+
+  return {
+    changed: true,
+    blockName: target.name,
+    position: target.position,
+    state,
+  };
 }
 
 export function registerMovementTools(
@@ -275,6 +371,116 @@ export function registerMovementTools(
             {
               type: "text",
               text: `Failed moving to player: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "open_door_or_trapdoor",
+    {
+      description:
+        "Open a door/trapdoor at coordinates or nearest one in range. Useful when pathing does not auto-open reliably.",
+      inputSchema: {
+        x: z.number().optional(),
+        y: z.number().optional(),
+        z: z.number().optional(),
+        max_distance: z.number().int().min(1).max(16).default(4),
+      },
+    },
+    async ({ x, y, z: targetZ, max_distance }) => {
+      const bot = getBot();
+
+      if (!bot) {
+        return {
+          content: [{ type: "text", text: "Bot is not connected yet." }],
+          isError: true,
+        };
+      }
+
+      if (!bot.entity) {
+        return {
+          content: [{ type: "text", text: "Bot entity is not available yet." }],
+          isError: true,
+        };
+      }
+
+      try {
+        const result = await setOpenableState(bot, true, { x, y, z: targetZ, max_distance });
+        return {
+          content: [
+            {
+              type: "text",
+              text: result.changed
+                ? `Opened ${result.blockName} at x=${result.position.x}, y=${result.position.y}, z=${result.position.z}`
+                : `${result.blockName} is already open at x=${result.position.x}, y=${result.position.y}, z=${result.position.z}`,
+            },
+          ],
+        };
+      } catch (error: unknown) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to open door/trapdoor: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "close_door_or_trapdoor",
+    {
+      description:
+        "Close a door/trapdoor at coordinates or nearest one in range. Useful to secure areas and control villager/pathing flows.",
+      inputSchema: {
+        x: z.number().optional(),
+        y: z.number().optional(),
+        z: z.number().optional(),
+        max_distance: z.number().int().min(1).max(16).default(4),
+      },
+    },
+    async ({ x, y, z: targetZ, max_distance }) => {
+      const bot = getBot();
+
+      if (!bot) {
+        return {
+          content: [{ type: "text", text: "Bot is not connected yet." }],
+          isError: true,
+        };
+      }
+
+      if (!bot.entity) {
+        return {
+          content: [{ type: "text", text: "Bot entity is not available yet." }],
+          isError: true,
+        };
+      }
+
+      try {
+        const result = await setOpenableState(bot, false, { x, y, z: targetZ, max_distance });
+        return {
+          content: [
+            {
+              type: "text",
+              text: result.changed
+                ? `Closed ${result.blockName} at x=${result.position.x}, y=${result.position.y}, z=${result.position.z}`
+                : `${result.blockName} is already closed at x=${result.position.x}, y=${result.position.y}, z=${result.position.z}`,
+            },
+          ],
+        };
+      } catch (error: unknown) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to close door/trapdoor: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
           isError: true,

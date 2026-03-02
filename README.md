@@ -43,7 +43,7 @@ Instead of asking the LLM to "Move forward, then turn left, then jump," the LLM 
 
 ### 2. Transactional Operations
 Complex tasks are exposed as single high-level transactions.
-*   **Current:** `get_own_position`, `move_to_coordinates`, `move_to_player`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `place_block_at`, `place_wall`, `place_ceiling`, `get_inventory_contents`, `get_inventory_status`, `drop_inventory_item`, `put_item_in_chest`, `take_item_from_chest`, `get_chest_contents`, `get_chest_status`, `craft_item`, `smelt_item`, `capture_bot_view`, `locate_blocks_in_area`, `locate_dropped_items`, `search_blocks_wiki`, `search_items_wiki`, `get_crafting_recipe`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
+*   **Current:** `get_own_position`, `move_to_coordinates`, `move_to_player`, `open_door_or_trapdoor`, `close_door_or_trapdoor`, `mine_block_by_coords`, `mine_room`, `break_tree`, `mine_stairs`, `place_block_at`, `place_wall`, `place_ceiling`, `get_inventory_contents`, `get_inventory_status`, `drop_inventory_item`, `put_item_in_chest`, `take_item_from_chest`, `get_chest_contents`, `get_chest_status`, `craft_item`, `smelt_item`, `capture_bot_view`, `get_biome_info`, `get_daytime_info`, `sleep_in_bed`, `locate_blocks_in_area`, `locate_dropped_items`, `search_blocks_wiki`, `search_items_wiki`, `get_crafting_recipe`, `list_players`, `find_player`, `get_player_coordinates`, `distance_to_player`, `find_nearest_players`.
 *   **Planned:** `build_structure` (Geometric templates handled by the server), `harvest_area` (Area scanning and path optimization).
 
 ### 3. Reduced Cognitive Load
@@ -79,6 +79,8 @@ npm run dev
 - `get_own_position`: Get the bot's current coordinates.
 - `move_to_coordinates`: Move to target coordinates. Inputs: `x`, `y`, `z`, `allow_block_breaking`, `allow_block_placement`, `timeout_ms`.
 - `move_to_player`: Move near a player. Inputs: `username`, `range`, `allow_block_breaking`, `allow_block_placement`, `timeout_ms`.
+- `open_door_or_trapdoor`: Open a door/trapdoor by optional coordinates or nearest in range. Inputs: optional `x`, `y`, `z`, `max_distance`.
+- `close_door_or_trapdoor`: Close a door/trapdoor by optional coordinates or nearest in range. Inputs: optional `x`, `y`, `z`, `max_distance`.
 
 ### Mining Module
 
@@ -106,6 +108,9 @@ npm run dev
 ### Vision Module
 
 - `capture_bot_view`: Capture a first-person screenshot from the bot. Inputs: `width` (default `800`), `height` (default `400`), `view_distance` in blocks (default `96`), `quality`, `look_at_x`, `look_at_y`, `look_at_z`.
+- `get_biome_info`: Get biome info at current or optional coordinates. Inputs: optional `x`, `y`, `z`.
+- `get_daytime_info`: Get day/time state and ticks until sleep window.
+- `sleep_in_bed`: Sleep in bed by optional coordinates or nearest bed in range. Inputs: optional `x`, `y`, `z`, `max_distance`, `timeout_ms`.
 - `locate_blocks_in_area`: Locate blocks by name/id/wildcard, sorted by nearest. Inputs: `query`, `radius`, `max_results`, optional `center_x`, `center_y`, `center_z`.
 - `locate_dropped_items`: Locate dropped item entities, sorted by nearest. Inputs: `radius`, `max_results`, optional `query`.
 

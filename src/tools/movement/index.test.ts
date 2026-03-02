@@ -72,16 +72,45 @@ function createHarness(initialBot: any = null) {
 }
 
 function createBot(overrides: Partial<any> = {}) {
-  return {
+  const blocks = new Map<string, any>();
+
+  const bot = {
     username: "MCP-Bot",
     entity: { position: { x: 0, y: 64, z: 0 } },
     players: {},
+    registry: {
+      blocksByName: {
+        oak_door: { id: 64 },
+        oak_trapdoor: { id: 96 },
+      },
+    },
     pathfinder: {
       setGoal: vi.fn(),
       setMovements: vi.fn(),
       goto: vi.fn().mockResolvedValue(undefined),
     },
-    ...overrides,
+    blockAt: vi.fn((pos: { x: number; y: number; z: number }) => blocks.get(`${pos.x},${pos.y},${pos.z}`) ?? null),
+    findBlock: vi.fn(({ matching }: any) => {
+      for (const value of blocks.values()) {
+        if (matching(value)) {
+          return value;
+        }
+      }
+      return null;
+    }),
+    lookAt: vi.fn().mockResolvedValue(undefined),
+    activateBlock: vi.fn(async (block: any) => {
+      if (typeof block.open === "boolean") {
+        block.open = !block.open;
+      }
+    }),
+    __blocks: blocks,
+  } as any;
+
+  Object.assign(bot, overrides);
+
+  return {
+    ...bot,
   };
 }
 
@@ -255,5 +284,28 @@ describe("movement tools", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("opens and closes door/trapdoor explicitly", async () => {
+    const bot = createBot();
+    const door = {
+      type: 64,
+      name: "oak_door",
+      position: { x: 1, y: 64, z: 0, offset(dx: number, dy: number, dz: number) { return { x: this.x + dx, y: this.y + dy, z: this.z + dz }; } },
+      open: false,
+      getProperties() {
+        return { open: this.open };
+      },
+    };
+    bot.__blocks.set("1,64,0", door);
+    const harness = createHarness(bot);
+
+    const openResult = await harness.call("open_door_or_trapdoor", { x: 1, y: 64, z: 0 });
+    expect(openResult.isError).toBeUndefined();
+    expect(openResult.content[0].text).toContain("Opened oak_door");
+
+    const closeResult = await harness.call("close_door_or_trapdoor", { x: 1, y: 64, z: 0 });
+    expect(closeResult.isError).toBeUndefined();
+    expect(closeResult.content[0].text).toContain("Closed oak_door");
   });
 });
