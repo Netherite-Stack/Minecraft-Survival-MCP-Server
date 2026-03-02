@@ -39,6 +39,29 @@ const REPLACEABLE_BLOCKS = new Set([
   "snow",
 ]);
 
+const INTERACTABLE_SUPPORT_BLOCKS = new Set([
+  "chest",
+  "trapped_chest",
+  "barrel",
+  "crafting_table",
+  "furnace",
+  "blast_furnace",
+  "smoker",
+  "hopper",
+  "dispenser",
+  "dropper",
+  "anvil",
+  "enchanting_table",
+  "jukebox",
+  "door",
+  "iron_door",
+  "trapdoor",
+  "iron_trapdoor",
+  "lever",
+  "stone_button",
+  "oak_button",
+]);
+
 function floorPos(x: number, y: number, z: number) {
   return {
     x: Math.floor(x),
@@ -133,6 +156,19 @@ function findPlacementReference(bot: mineflayer.Bot, target: Vec3) {
   }
 
   return null;
+}
+
+function isInteractableReferenceBlock(name: string) {
+  if (INTERACTABLE_SUPPORT_BLOCKS.has(name)) {
+    return true;
+  }
+
+  return (
+    name.endsWith("_door") ||
+    name.endsWith("_trapdoor") ||
+    name.endsWith("_button") ||
+    name.endsWith("_chest")
+  );
 }
 
 async function runWithTimeout<T>(operation: Promise<T>, timeoutMs: number, timeoutLabel: string): Promise<T> {
@@ -241,10 +277,28 @@ async function placeSingleBlock(
   }
 
   await runWithTimeout(
-    bot.placeBlock(validation.reference.referenceBlock as never, validation.reference.faceVector),
+    (async () => {
+      bot.setControlState?.("sneak", true);
+      try {
+        await bot.placeBlock(validation.reference.referenceBlock as never, validation.reference.faceVector);
+      } finally {
+        bot.setControlState?.("sneak", false);
+      }
+    })(),
     timeoutMs,
     `Place ${blockName}`
-  );
+  ).catch((error: unknown) => {
+    const referenceName = validation.reference.referenceBlock.name;
+    const base = error instanceof Error ? error.message : String(error);
+
+    if (isInteractableReferenceBlock(referenceName)) {
+      throw new Error(
+        `Placement interaction failed on support block '${referenceName}' at x=${validation.reference.referenceBlock.position.x}, y=${validation.reference.referenceBlock.position.y}, z=${validation.reference.referenceBlock.position.z}. This is an interactable block and may open instead of placing (common with double chests). Try placing against a different non-interactable adjacent support block. Original error: ${base}`
+      );
+    }
+
+    throw error;
+  });
 
   const after = resolveBlockAt(bot, target.x, target.y, target.z);
   if (!after || after.name !== blockName) {

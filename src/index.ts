@@ -12,6 +12,8 @@ import { registerMultiplayerTools } from "./tools/multiplayer/index.js";
 import { registerVisionTools } from "./tools/vision/index.js";
 import { registerWikiTools } from "./tools/wiki/index.js";
 import { registerBuildingTools } from "./tools/building/index.js";
+import { registerInventoryTools } from "./tools/inventory/index.js";
+import { registerCraftingTools } from "./tools/crafting/index.js";
 import { createRequire } from "node:module";
 import { logger } from "./observability/logger.js";
 import { attachToolLogging } from "./observability/tool-logging.js";
@@ -97,6 +99,8 @@ function createServer() {
   registerMovementTools(server, () => bot);
   registerMiningTools(server, () => bot);
   registerBuildingTools(server, () => bot);
+  registerInventoryTools(server, () => bot);
+  registerCraftingTools(server, () => bot);
   registerVisionTools(server, () => bot);
   registerWikiTools(server, () => bot);
 

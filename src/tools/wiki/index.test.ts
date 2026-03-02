@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerWikiTools } from "./index.js";
 
@@ -71,5 +71,36 @@ describe("wiki tools", () => {
     expect(result.content[0].text).toContain("iron_pickaxe");
     expect(result.content[0].text).toContain("diamond_pickaxe");
     expect(result.content[0].text).not.toContain("bread");
+  });
+
+  it("returns crafting requirements for target amount", async () => {
+    const bot = {
+      registry: {
+        blocksByName: {},
+        itemsByName: {
+          stick: { id: 280, name: "stick", displayName: "Stick" },
+          oak_planks: { id: 5, name: "oak_planks", displayName: "Oak Planks" },
+        },
+        items: {
+          5: { id: 5, name: "oak_planks" },
+          280: { id: 280, name: "stick" },
+        },
+      },
+      recipesAll: vi.fn(() => [
+        {
+          result: { id: 280, metadata: 0, count: 4 },
+          ingredients: [{ id: 5, metadata: 0, count: 2 }],
+          requiresTable: false,
+        },
+      ]),
+    };
+
+    const harness = createHarness(bot);
+    const result = await harness.call("get_crafting_recipe", { item: "stick", amount: 8 });
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("requires: oak_planks x4");
+    expect(result.content[0].text).toContain("crafting_table_required=no");
+    expect(result.content[0].text).toContain("crafts_needed=2");
   });
 });

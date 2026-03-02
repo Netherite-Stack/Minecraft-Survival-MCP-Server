@@ -64,6 +64,7 @@ function createBot(options: {
     equip: vi.fn(async (item: any) => {
       bot.heldItem = item;
     }),
+    setControlState: vi.fn(),
     placeBlock: vi.fn(async (referenceBlock: any, faceVector: { x: number; y: number; z: number }) => {
       const x = referenceBlock.position.x + faceVector.x;
       const y = referenceBlock.position.y + faceVector.y;
@@ -165,6 +166,32 @@ describe("building tools", () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("occupying");
+  });
+
+  it("returns actionable error when interactable support opens instead of placing", async () => {
+    const bot = createBot({
+      blocks: {
+        "1,64,1": block("chest", 1, 64, 1),
+      },
+      inventoryItems: [{ type: 1, name: "stone", count: 4 }],
+    });
+
+    bot.placeBlock = vi.fn(async () => {
+      throw new Error("window open");
+    });
+
+    const harness = createHarness(bot);
+    const result = await harness.call("place_block_at", {
+      block_name: "stone",
+      x: 2,
+      y: 64,
+      z: 1,
+      timeout_ms: 5000,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("interactable block");
+    expect(result.content[0].text).toContain("double chests");
   });
 
   it("checks wall resources and reports required, available, and missing", async () => {
