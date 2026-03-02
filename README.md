@@ -67,7 +67,10 @@ npm run dev
 *   `MC_HOST`: Minecraft server host used at startup (default: `localhost`).
 *   `MC_PORT`: Minecraft server port (default: `25565`).
 *   `MC_USERNAME`: Bot username (default: `MCP-Bot`).
+*   `ENABLE_VIEWER`: Set to `1`/`true` to start prismarine-viewer web stream after bot spawn (default: disabled).
+*   `VIEWER_PORT`: Port for prismarine-viewer (default: `3000`).
 *   `ENABLE_IMAGES`: Set to `1`/`true` to enable registration of `capture_bot_view`.
+*   `LOG_LEVEL`: Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`; default: `info`).
 
 ## Available Tools
 

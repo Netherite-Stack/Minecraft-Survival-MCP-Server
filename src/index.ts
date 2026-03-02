@@ -12,6 +12,13 @@ import { registerMultiplayerTools } from "./tools/multiplayer/index.js";
 import { registerVisionTools } from "./tools/vision/index.js";
 import { registerWikiTools } from "./tools/wiki/index.js";
 import { registerBuildingTools } from "./tools/building/index.js";
+import { createRequire } from "node:module";
+import { logger } from "./observability/logger.js";
+import { attachToolLogging } from "./observability/tool-logging.js";
+import { startViewerIfEnabled } from "./runtime/viewer.js";
+
+const require = createRequire(import.meta.url);
+const prismarineViewer = require("prismarine-viewer");
 
 const { pathfinder } = pathfinderPkg;
 
@@ -32,7 +39,7 @@ function scheduleReconnect(reason: string) {
 
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
-    console.error(`Reconnecting bot after ${reason}...`);
+    logger.warn({ reason }, "bot.reconnect_scheduled");
     connectBot();
   }, 5000);
 }
@@ -52,14 +59,21 @@ function connectBot() {
 
   currentBot.once("spawn", () => {
     isConnecting = false;
-    console.error(
-      `Bot connected and spawned as ${botConfig.username} on ${botConfig.host}:${botConfig.port}`
+    logger.info(
+      {
+        username: botConfig.username,
+        host: botConfig.host,
+        port: botConfig.port,
+      },
+      "bot.connected"
     );
+
+    startViewerIfEnabled(currentBot, prismarineViewer, process.env, logger);
   });
 
   currentBot.once("error", (err) => {
     isConnecting = false;
-    console.error(`Bot error: ${err.message}`);
+    logger.error({ err }, "bot.error");
     bot = null;
     scheduleReconnect("error");
   });
@@ -76,6 +90,8 @@ function createServer() {
     name: pkg.name,
     version: pkg.version,
   });
+
+  attachToolLogging(server, logger);
 
   registerMultiplayerTools(server, () => bot);
   registerMovementTools(server, () => bot);
@@ -187,17 +203,17 @@ async function main() {
     });
 
     app.listen(port, host, () => {
-      console.error(`MCP Remote server listening on http://${host}:${port}/mcp`);
+      logger.info({ host, port, path: "/mcp" }, "mcp.remote_listening");
     });
   } else {
     const server = createServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("MCP server running on stdio");
+    logger.info("mcp.stdio_running");
   }
 }
 
 main().catch((error) => {
-  console.error("Server error:", error);
+  logger.error({ err: error }, "server.fatal_error");
   process.exit(1);
 });
