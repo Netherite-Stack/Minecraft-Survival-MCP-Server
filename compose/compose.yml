@@ -1,0 +1,29 @@
+name: mc-mcp-stack
+
+include:
+  - ./mc-server/compose.yml
+
+services:
+  mc-mcp:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      MC_HOST: ${MC_SERVER_HOST:-mc-server}
+      MC_PORT: ${MC_PORT:-25565}
+      MC_USERNAME: ${MC_USERNAME:-MCP-Bot}
+      MCP_TRANSPORT: ${MCP_TRANSPORT:-remote}
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-3000}
+      ENABLE_VIEWER: ${ENABLE_VIEWER:-true}
+      VIEWER_PORT: ${MCP_VIEWER_PORT:-4000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      mc-server:
+        condition: service_started
+    ports:
+      - ${MCP_PORT:-3300}:3000
+      - ${MCP_VIEWER_PORT:-4000}:${MCP_VIEWER_PORT:-4000}
+    restart: unless-stopped
