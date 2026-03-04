@@ -14,9 +14,10 @@ type MovementOptions = {
 function createConfiguredMovements(bot: mineflayer.Bot, options: MovementOptions) {
   const movements = new Movements(bot);
   movements.canDig = options.allow_block_breaking;
+  movements.allow1by1towers = false;
+  movements.allowParkour = false;
 
   if (!options.allow_block_placement) {
-    movements.allow1by1towers = false;
     movements.scafoldingBlocks = [];
   }
 

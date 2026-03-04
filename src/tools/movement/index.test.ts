@@ -5,6 +5,7 @@ vi.mock("mineflayer-pathfinder", () => {
   class MockMovements {
     canDig = true;
     allow1by1towers = true;
+    allowParkour = true;
     scafoldingBlocks = [1];
 
     constructor(public readonly bot: unknown) {}
@@ -143,7 +144,7 @@ describe("movement tools", () => {
     expect(result.content[0].text).toContain("not connected");
   });
 
-  it("moves to coordinates and configures movement flags", async () => {
+  it("moves to coordinates and disables 1x1 towering", async () => {
     const bot = createBot();
     const harness = createHarness(bot);
 
@@ -153,7 +154,7 @@ describe("movement tools", () => {
       z: -2.9,
       timeout_ms: 5000,
       allow_block_breaking: false,
-      allow_block_placement: false,
+      allow_block_placement: true,
     });
 
     expect(result.isError).toBeUndefined();
@@ -164,7 +165,8 @@ describe("movement tools", () => {
     const movement = bot.pathfinder.setMovements.mock.calls[0][0];
     expect(movement.canDig).toBe(false);
     expect(movement.allow1by1towers).toBe(false);
-    expect(movement.scafoldingBlocks).toEqual([]);
+    expect(movement.allowParkour).toBe(false);
+    expect(movement.scafoldingBlocks).toEqual([1]);
   });
 
   it("returns pathfinder failures with readable error text", async () => {
