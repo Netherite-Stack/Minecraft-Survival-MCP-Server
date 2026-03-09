@@ -10,7 +10,7 @@
       "npmPublish": false
     }],
     ["@semantic-release/github", {
-      "assets": ["dist/**", "package.json", "CHANGELOG.md"]
+      "assets": ["CHANGELOG.md", "package.json"]
     }],
     ["@semantic-release/git", {
       "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
