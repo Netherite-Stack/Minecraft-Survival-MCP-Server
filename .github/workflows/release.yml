@@ -36,7 +36,7 @@ jobs:
       - name: Release
         id: semantic
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ORG_RELEASE_TOKEN }}
         run: |
           npx semantic-release
           # Capture version from semantic-release output or package.json
