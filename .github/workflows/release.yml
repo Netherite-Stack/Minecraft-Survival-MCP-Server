@@ -74,5 +74,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ steps.semantic.outputs.version }}
+            ghcr.io/netherite-stack/minecraft-survival-mcp-server:latest
+            ghcr.io/netherite-stack/minecraft-survival-mcp-server:${{ steps.semantic.outputs.version }}
