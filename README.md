@@ -1,6 +1,6 @@
-# mc-mcp
+# Minecraft Survival MCP Server
 
-A TypeScript Model Context Protocol (MCP) server for Minecraft, powered by [Mineflayer](https://github.com/PrismarineJS/mineflayer).
+A TypeScript Model Context Protocol (MCP) server for Minecraft Survival, powered by [Mineflayer](https://github.com/PrismarineJS/mineflayer). This server is specifically designed to allow LLM agents to play and survive in Minecraft.
 
 ## Vision: The Helix Approach
 

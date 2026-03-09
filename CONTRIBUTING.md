@@ -1,6 +1,6 @@
-# Contributing to mc-mcp
+# Contributing to Minecraft Survival MCP Server
 
-Thank you for your interest in contributing! We welcome all contributions to improve this Minecraft MCP server.
+Thank you for your interest in contributing! We welcome all contributions to improve this Minecraft Survival MCP server.
 
 ## Getting Started
 
