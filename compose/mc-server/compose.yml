@@ -7,12 +7,14 @@ services:
       - ../.env
     environment:
       EULA: "TRUE"
-      TYPE: ${MC_TYPE:-VANILLA}
-      VERSION: ${MC_VERSION:-LATEST}
+      TYPE: ${MC_TYPE:-PAPER}
+      VERSION: ${MC_VERSION:-1.21.11}
       ONLINE_MODE: ${MC_ONLINE_MODE:-FALSE}
       DIFFICULTY: ${MC_DIFFICULTY:-peaceful}
+      MODRINTH_PROJECTS: ${MC_MODRINTH_PROJECTS:-pl3xmap:beta}
     ports:
       - ${MC_PORT:-25565}:25565
+      - ${MC_MAP_PORT:-8080}:8080
     volumes:
       - mc-server-data:/data
     restart: unless-stopped
