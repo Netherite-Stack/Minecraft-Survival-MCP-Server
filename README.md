@@ -72,6 +72,31 @@ npm run dev
 *   `ENABLE_IMAGES`: Set to `1`/`true` to enable registration of `capture_bot_view`.
 *   `LOG_LEVEL`: Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`; default: `info`).
 
+## REST API
+
+When `MCP_TRANSPORT=remote`, the following REST endpoints are also served on `PORT` alongside `/mcp`. All return `503` with `{ "error": "Bot is not connected yet." }` if the bot isn't connected.
+
+- `GET /api/status`: Bot username, health, hunger, position, and equipped armor.
+  ```json
+  {
+    "username": "MCP-Bot",
+    "health": 20,
+    "hunger": 20,
+    "position": { "x": 0, "y": 64, "z": 0 },
+    "armor": {
+      "helmet": { "id": 869, "name": "diamond_helmet", "count": 1 },
+      "chestplate": null,
+      "leggings": null,
+      "boots": null
+    }
+  }
+  ```
+- `GET /api/inventory`: Inventory contents with Minecraft item id and name.
+  ```json
+  { "items": [{ "slot": 9, "id": 264, "name": "diamond", "count": 3 }] }
+  ```
+- `POST /api/respawn`: Respawns the bot. Only allowed while the bot is dead; returns `409` otherwise. Note: `respawn` is disabled in the bot's mineflayer config, so death always requires this call.
+
 ## Available Tools
 
 ### Movement Module
