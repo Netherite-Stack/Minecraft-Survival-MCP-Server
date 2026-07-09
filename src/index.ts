@@ -18,6 +18,7 @@ import { createRequire } from "node:module";
 import { logger } from "./observability/logger.js";
 import { attachToolLogging } from "./observability/tool-logging.js";
 import { startViewerIfEnabled } from "./runtime/viewer.js";
+import { registerRestRoutes } from "./rest/index.js";
 
 const require = createRequire(import.meta.url);
 const prismarineViewer = require("prismarine-viewer");
@@ -32,6 +33,8 @@ const botConfig = {
   host: process.env.MC_HOST || "localhost",
   port: parseInt(process.env.MC_PORT || "25565", 10),
   username: process.env.MC_USERNAME || "MCP-Bot",
+  // Disabled so death requires an explicit call to POST /api/respawn.
+  respawn: false,
 };
 
 function scheduleReconnect(reason: string) {
@@ -130,6 +133,8 @@ async function main() {
     const sessions = new Map<string, StreamableHTTPServerTransport>();
 
     const app = createMcpExpressApp({ host });
+
+    registerRestRoutes(app, () => bot);
 
     app.post("/mcp", async (req, res) => {
       const sessionId = getSessionId(req.headers["mcp-session-id"]);
